@@ -6,9 +6,10 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
+
 setup(
     name='jnitrace',
-    version='3.3.1',
+    version='3.3.2',
     description='A tool for tracing use of the JNI in Android apps',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -38,7 +39,7 @@ setup(
         'hexdump'
     ],
     package_data={
-        '': ['jnitrace.js'],
+        'jnitrace.build': ['jnitrace.js'],
     },
     include_package_data=True,
     entry_points={
