@@ -38,7 +38,7 @@ setup(
         'hexdump'
     ],
     package_data={
-        '': ['jnitrace.js'],
+        'jnitrace.build': ['jnitrace.js'],
     },
     include_package_data=True,
     entry_points={
