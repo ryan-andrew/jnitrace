@@ -17,8 +17,8 @@ jobs:
       - run: pylint jnitrace/jnitrace.py
       - run: npm install
       - run: npm run lint
-      
-      - run: touch jnitrace/build/__init__.py
+
+      - run: npm run build
       - run: python setup.py sdist
       - uses: pypa/gh-action-pypi-publish@release/v1
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
