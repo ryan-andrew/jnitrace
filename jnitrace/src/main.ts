@@ -1,10 +1,10 @@
 import { JNILibraryWatcher } from "jnitrace-engine";
 import { JNIInterceptor } from "jnitrace-engine";
-import { JNINativeReturnValue } from "jnitrace-engine";
-import { JNIInvocationCallback } from "jnitrace-engine";
+import type { JNINativeReturnValue } from "jnitrace-engine";
+import type { JNIInvocationCallback } from "jnitrace-engine";
 import { Config } from "jnitrace-engine";
 import { ConfigBuilder } from "jnitrace-engine";
-import { MethodData } from "./utils/method_data";
+import { MethodData } from "jnitrace-engine";
 import { DataTransport } from "./transport/data_transport";
 
 const IS_IN_REPL = false;
@@ -53,7 +53,7 @@ JNILibraryWatcher.setCallback({
 });
 
 const jniEnvCallback: JNIInvocationCallback = {
-    onEnter (args: NativeArgumentValue[]): void {
+    onEnter (args: NativeFunctionArgumentValue[]): void {
         this.args = args;
     },
     onLeave (retval: JNINativeReturnValue): void {
@@ -67,7 +67,7 @@ const jniEnvCallback: JNIInvocationCallback = {
 };
 
 const javaVMCallback: JNIInvocationCallback = {
-    onEnter (args: NativeArgumentValue[]): void {
+    onEnter (args: NativeFunctionArgumentValue[]): void {
         this.args = args;
     },
     onLeave (retval: JNINativeReturnValue): void {

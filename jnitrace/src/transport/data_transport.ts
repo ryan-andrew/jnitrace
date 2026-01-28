@@ -1,6 +1,7 @@
-import { Types }  from "../utils/types";
-import { MethodData } from "../utils/method_data";
-import { JNIMethod, Config } from "jnitrace-engine";
+import { Types }  from "jnitrace-engine";
+import type { MethodData } from "jnitrace-engine";
+import type { JNIMethod} from "jnitrace-engine";
+import { Config } from "jnitrace-engine";
 
 const JNI_OK = 0;
 const TYPE_NAME_START = 0;
@@ -12,17 +13,17 @@ const JNI_ENV_INDEX = 0;
 
 
 class NativeMethodJSONContainer {
-    public readonly name: { [id: string]: string | null } = {};
+    public readonly name: Record<string, string | null> = {};
 
-    public readonly sig: { [id: string]: string | null } = {};
+    public readonly sig: Record<string, string | null> = {};
 
-    public readonly addr: { [id: string]: string | null } = {};
+    public readonly addr: Record<string, string | null> = {};
 
 
     public constructor (
-        name: { [id: string]: string | null },
-        sig: { [id: string]: string | null },
-        addr: { [id: string]: string | null }
+        name: Record<string, string | null>,
+        sig: Record<string, string | null>,
+        addr: Record<string, string | null>
     ) {
         this.name = name;
         this.sig = sig;
@@ -30,22 +31,23 @@ class NativeMethodJSONContainer {
     }
 }
 
-/* eslint-disable @typescript-eslint/camelcase */
 class DataJSONContainer {
-    public readonly value: NativeArgumentValue | NativeReturnValue;
+    public readonly value: NativeFunctionArgumentValue | NativeFunctionReturnValue;
 
-    public readonly data: ArrayBuffer | NativeArgumentValue | NativeReturnValue
+    public readonly data: ArrayBuffer | NativeFunctionArgumentValue | NativeFunctionReturnValue
     | string | NativeMethodJSONContainer[] | undefined;
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     public readonly data_for: number | undefined;
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     public readonly has_data: boolean | undefined;
 
     private metadata: string | undefined;
 
     public constructor (
-        value: NativeArgumentValue | NativeReturnValue,
-        data: ArrayBuffer | NativeArgumentValue | NativeReturnValue
+        value: NativeFunctionArgumentValue | NativeFunctionReturnValue,
+        data: ArrayBuffer | NativeFunctionArgumentValue | NativeFunctionReturnValue
         | string | NativeMethodJSONContainer[] | null,
         dataIndex? : number
     ) {
@@ -97,6 +99,7 @@ class BacktraceJSONContainer {
 class RecordJSONContainer {
     public readonly type: string;
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     public readonly call_type: string;
 
     public readonly method: JNIMethod;
@@ -105,14 +108,17 @@ class RecordJSONContainer {
 
     public readonly ret: DataJSONContainer;
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     public readonly thread_id: number;
 
     public readonly timestamp: number;
 
+    // eslint-disable-next-line @typescript-eslint/naming-convention
     public readonly java_params: string[] | undefined;
 
     public readonly backtrace: BacktraceJSONContainer[] | undefined;
 
+    // eslint-disable-next-line @typescript-eslint/max-params
     public constructor (
         callType: string,
         method: JNIMethod,
@@ -134,7 +140,6 @@ class RecordJSONContainer {
         this.backtrace = backtrace;
     }
 }
-/* eslint-enable @typescript-eslint/camelcase */
 
 class DataTransport {
     private readonly start: number;
@@ -245,20 +250,18 @@ class DataTransport {
         const JARRAY_INDEX = 1;
 
         if (isGet) {
-            this.byteArraySizes.set(data.args[JARRAY_INDEX].toString(),
-                data.ret as number);
+            this.byteArraySizes.set(data.getArgAsString(JARRAY_INDEX), data.ret as number);
         } else {    //isSet
-            this.byteArraySizes.set(data.ret.toString(),
-                data.args[JARRAY_INDEX] as number);
+            this.byteArraySizes.set(data.retString, data.getArgAsNum(JARRAY_INDEX));
         }
     }
 
     private updateMethodIDs (data: MethodData): void {
         const NAME_INDEX = 2;
         const SIG_INDEX = 3;
-        const methodID = data.ret.toString();
-        const name = (data.args[NAME_INDEX] as NativePointer).readCString();
-        const sig = (data.args[SIG_INDEX] as NativePointer).readCString();
+        const methodID = data.retString;
+        const name = data.getArgAsPtr(NAME_INDEX).readCString();
+        const sig = data.getArgAsPtr(SIG_INDEX).readCString();
         if (name !== null && sig !== null) {
             this.jmethodIDs.set(methodID, name + sig);
         }
@@ -267,9 +270,9 @@ class DataTransport {
     private updateFieldIDs (data: MethodData): void {
         const NAME_INDEX = 2;
         const SIG_INDEX = 3;
-        const fieldID = data.ret.toString();
-        const name = (data.args[NAME_INDEX] as NativePointer).readCString();
-        const sig = (data.args[SIG_INDEX] as NativePointer).readCString();
+        const fieldID = data.retString;
+        const name = data.getArgAsPtr(NAME_INDEX).readCString();
+        const sig = data.getArgAsPtr(SIG_INDEX).readCString();
         if (name !== null && sig !== null) {
             this.jfieldIDs.set(fieldID, name + ":" + sig);
         }
@@ -277,8 +280,8 @@ class DataTransport {
 
     private updateClassIDs (data: MethodData): void {
         const NAME_INDEX = 1;
-        const jclass = data.ret.toString();
-        const name = (data.args[NAME_INDEX] as NativePointer).readCString();
+        const jclass = data.retString;
+        const name = data.getArgAsPtr(NAME_INDEX).readCString();
         if (name !== null) {
             this.jobjects.set(jclass, name);
 
@@ -288,21 +291,21 @@ class DataTransport {
     private updateObjectIDsFromRefs (data: MethodData, isCreate: boolean): void {
         const OBJECT_INDEX = 1;
         if (isCreate) {
-            const newRef = data.ret.toString();
-            const oldRef = data.args[OBJECT_INDEX].toString();
+            const newRef = data.retString;
+            const oldRef = data.getArgAsString(OBJECT_INDEX);
             if (this.jobjects.has(oldRef)) {
-                this.jobjects.set(newRef, this.jobjects.get(oldRef) as string);
+                this.jobjects.set(newRef, this.jobjects.get(oldRef)!);
             }
         } else {
-            const jobject = data.args[OBJECT_INDEX].toString();
+            const jobject = data.getArgAsString(OBJECT_INDEX);
             this.jobjects.delete(jobject);
         }
     }
 
     private updateObjectIDsFromClass (data: MethodData): void {
         const OBJECT_INDEX = 1;
-        const jobject = data.args[OBJECT_INDEX].toString();
-        const jclass = data.ret.toString();
+        const jobject = data.getArgAsString(OBJECT_INDEX);
+        const jclass = data.retString;
         if (this.jobjects.has(jobject)) {
             this.jobjects.set(jclass, jobject);
         }
@@ -320,7 +323,7 @@ class DataTransport {
                 start = CALL_PTRS_OFFSET;
             }
             for (let i = start; i < data.args.length; i++) {
-                const arg = data.args[i].toString();
+                const arg = data.getArgAsString(i);
                 if (this.jobjects.has(arg)) {
                     // skip where we have an existing class name
                     continue;
@@ -331,8 +334,8 @@ class DataTransport {
                 }
             }
             if (data.method.name.includes("Object")) {
-                if (!this.jobjects.has(data.ret.toString())) {
-                    this.jobjects.set(data.ret.toString(),
+                if (!this.jobjects.has(data.retString)) {
+                    this.jobjects.set(data.retString,
                         data.javaMethod.ret.slice(TYPE_START, TYPE_END));
                 }
             }
@@ -345,12 +348,12 @@ class DataTransport {
         const utf8Ptr = data.getArgAsPtr(UTF8_INDEX).readUtf8String();
 
         if (utf8Ptr !== null) {
-            this.jstrings.set(data.ret.toString(), utf8Ptr);
+            this.jstrings.set(data.retString, utf8Ptr);
         }
     }
 
     private updateState (data: MethodData): void {
-        const name = data.method.name;
+        const {name} = data.method;
 
         if (name === "GetArrayLength") {
             this.updateArrayLengths(data, true);
@@ -376,7 +379,7 @@ class DataTransport {
     }
 
     private shouldIgnoreMethod (data: MethodData): boolean {
-        const name = data.method.name;
+        const {name} = data.method;
 
         if (this.include.length > EMPTY_ARRAY_LEN) {
             const included = this.include.filter(
@@ -438,7 +441,7 @@ class DataTransport {
 
             this.enrichSingleItem(
                 data.method.args[i],
-                data.args[i].toString(),
+                data.getArgAsString(i),
                 args[i]
             );
         }
@@ -448,7 +451,7 @@ class DataTransport {
             if (data.javaMethod !== undefined) {
                 this.enrichSingleItem(
                     data.javaMethod.nativeParams[i - OFFSET],
-                    data.args[i].toString(),
+                    data.getArgAsString(i),
                     args[i]
                 );
             }
@@ -608,8 +611,7 @@ class DataTransport {
 
         const type = data.method.args[BUF_INDEX]
             .slice(TYPE_NAME_START, TYPE_NAME_END);
-        const nType = Types.convertNativeJTypeToFridaType(type);
-        const size = Types.sizeOf(nType);
+        const size = Types.sizeOf(type);
         const buf = data.getArgAsPtr(BUF_INDEX);
         const len = data.getArgAsNum(LEN_INDEX);
         const region = buf.readByteArray(len * size);
@@ -735,8 +737,7 @@ class DataTransport {
 
         const byteArrayArg = data.method.args[BUFFER_PTR_INDEX];
         const type = byteArrayArg.slice(TYPE_NAME_START, TYPE_NAME_END);
-        const nType = Types.convertNativeJTypeToFridaType(type);
-        const size = Types.sizeOf(nType);
+        const size = Types.sizeOf(type);
         const buf = data.getArgAsPtr(BUFFER_PTR_INDEX);
         const byteArray = data.getArgAsPtr(BYTE_ARRAY_INDEX).toString();
         const len = this.byteArraySizes.get(byteArray);
@@ -777,7 +778,7 @@ class DataTransport {
         data: MethodData,
         outputArgs: DataJSONContainer[]
     ): ArrayBuffer | null {
-        const name = data.method.name;
+        const {name} = data.method;
 
         if (name === "DefineClass") {
             return this.addDefineClassArgs(data, outputArgs);
@@ -823,23 +824,22 @@ class DataTransport {
     ): ArrayBuffer | null {
         const RET_INDEX = -1;
         const ENVPTR_ARG_INDEX = 1;
-        const name = data.method.name;
+        const {name} = data.method;
 
         if (name.startsWith("Get") && name.endsWith("Elements") ||
           name.startsWith("Get") && name.endsWith("ArrayCritical")) {
-            const key = data.args[ENVPTR_ARG_INDEX].toString();
+            const key = data.getArgAsString(ENVPTR_ARG_INDEX);
 
             if (this.byteArraySizes.has(key)) {
                 const type = data.method.ret.slice(
                     TYPE_NAME_START,
                     TYPE_NAME_END
                 );
-                const nType = Types.convertNativeJTypeToFridaType(type);
-                const size = Types.sizeOf(nType);
+                const size = Types.sizeOf(type);
                 const buf = data.ret as NativePointer;
                 const len = this.byteArraySizes.get(
                     data.getArgAsPtr(ENVPTR_ARG_INDEX).toString()
-                ) as number;
+                )!;
 
                 outputRet.push(
                     new DataJSONContainer(
@@ -911,7 +911,7 @@ class DataTransport {
         const ENV_ARG_INDEX = 1;
         const VERSION_ARG_INDEX = 2;
 
-        const env: NativeArgumentValue = data.args[ENV_ARG_INDEX];
+        const env: NativeFunctionArgumentValue = data.args[ENV_ARG_INDEX];
         let binData = null;
 
         if (data.ret === JNI_OK) {
@@ -930,7 +930,7 @@ class DataTransport {
         data: MethodData,
         outputArgs: DataJSONContainer[]
     ): ArrayBuffer | null {
-        const name = data.method.name;
+        const {name} = data.method;
 
         if (name.startsWith("AttachCurrentThread")) {
             return this.addAttachCurrentThreadArgs(data, outputArgs);
@@ -975,7 +975,7 @@ class DataTransport {
         context: NativePointer[] | undefined
     ): void {
         const config = Config.getInstance();
-        const jParams = data.jParams;
+        const {jParams} = data;
         let backtrace = undefined;
 
         if (context !== undefined) {
