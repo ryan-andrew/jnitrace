@@ -6,8 +6,8 @@
   "main": "jnitrace/src/main.js",
   "scripts": {
     "prepare": "npm run build",
-    "build": "mkdirp jnitrace/build && frida-compile jnitrace/src/main.ts -o jnitrace/build/jnitrace.js -c",
-    "watch": "mkdirp jnitrace/build && frida-compile jnitrace/src/main.ts -o jnitrace/build/jnitrace.js -cw",
+    "build": "frida-compile jnitrace/src/main.ts -o jnitrace/build/jnitrace.js -c",
+    "watch": "frida-compile jnitrace/src/main.ts -o jnitrace/build/jnitrace.js -cw",
     "lint": "eslint jnitrace/src/**/*.ts"
   },
   "devDependencies": {
